@@ -31,6 +31,10 @@ CREATE TABLE dimSolarPanel(
     name VARCHAR(25)                NOT NULL,
 	capacity_kwh                    FLOAT NOT NULL,
 
+    -- scd type2 for capacity_kwh
+    capacity_start_date             DATE NOT NULL,
+    capacity_end_date               DATE,
+
     PRIMARY KEY (solar_panel_key)
 );
 
@@ -42,9 +46,24 @@ CREATE TABLE dimBattery(
 	capacity_kwh                    FLOAT NOT NULL,
     charge_max_speed_watt_second    FLOAT NOT NULL,
 
+    -- scd type2 for capacity_kwh
+    capacity_start_date             DATE NOT NULL,
+    capacity_end_date               DATE,
+    -- scd type2 for charge_max_speed_watt_second
+    charge_speed_start_date         DATE NOT NULL,
+    charge_speed_end_date           DATE,
+
+
     PRIMARY KEY (battery_key)
 );
 
+CREATE TABLE dimNationalGrid(
+    national_grid_key               SMALLINT AUTO_INCREMENT,
+    national_grid_if                SMALLINT,
+    name VARCHAR(25)                NOT NULL,
+
+    PRIMARY KEY (national_grid_key)
+);
 
 CREATE TABLE dimHome(
     home_key                        SMALLINT AUTO_INCREMENT,
@@ -61,6 +80,7 @@ CREATE TABLE FactHomePower(
     home_key                        SMALLINT NOT NULL REFERENCES dimHome(home_key),
     solar_pannel_key                SMALLINT REFERENCES dimSolarPanel(solar_panel_key),
     battery_key                     SMALLINT REFERENCES dimBattery(battery_key),
+    national_grid_key               SMALLINT REFERENCES dimNationalGrid(national_grid_key),
     date_key                        SMALLINT REFERENCES dimDate(date_key),
 
     power_consumption_amount        FLOAT NOT NULL,
