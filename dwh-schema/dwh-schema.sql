@@ -2,6 +2,14 @@ CREATE DATABASE IF NOT EXISTS SolarXDWH;
 
 USE SolarXDWH;
 
+DROP TABLE IF EXISTS dimDate;
+DROP TABLE IF EXISTS dimSolarPanel;
+DROP TABLE IF EXISTS dimBattery;
+DROP TABLE IF EXISTS dimHome;
+DROP TABLE IF EXISTS FactHomePower;
+DROP TABLE IF EXISTS FactSolarPowerGeneration;
+DROP TABLE IF EXISTS FactBatteryPower;
+
 
 CREATE TABLE dimDate(
     date_key                        INT AUTO_INCREMENT,
@@ -11,7 +19,9 @@ CREATE TABLE dimDate(
     month                           SMALLINT NOT NULL,
     week                            SMALLINT NOT NULL,
     day                             SMALLINT NOT NULL,
-    is_weekend                      BOOLEAN
+    is_weekend                      BOOLEAN,
+
+    PRIMARY KEY (date_key)
 );
 
 
@@ -55,7 +65,7 @@ CREATE TABLE FactHomePower(
 
     power_consumption_amount        FLOAT NOT NULL,
     
-    PRIMARY KEY (battery_power_key)
+    PRIMARY KEY (home_power_key)
 );
 
 
