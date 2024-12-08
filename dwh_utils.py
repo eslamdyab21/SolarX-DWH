@@ -69,6 +69,59 @@ class DWH_Utils():
 
 
 
+
+    def handle_solar_panel_scd2(self, source_id, source_capacity_kwh, source_name):
+        self.logger.info("DWH_Utils -> handle_solar_panel_scd2 -> Start")
+        query = (
+        f"""
+            SELECT  
+                solar_panel_key,
+                capacity_kwh
+            FROM 
+                dimSolarPanel
+            WHERE 
+                solar_panel_id = {source_id}
+            ORDER BY solar_panel_key DESC LIMIT 1
+        """
+        )
+        querey_result = self.select_query_fetchonce(query)
+
+
+        if querey_result:
+            solar_panel_key, destination_capacity_kwh = querey_result
+            if source_capacity_kwh != destination_capacity_kwh:
+                self.logger.info("DWH_Utils -> dwh_solar_panel_insert_new_records -> Record is there, Updated from source, Insert new record")
+
+                query = (
+                f"""
+                    INSERT INTO  
+                        dimSolarPanel(solar_panel_id, name, capacity_kwh, capacity_start_date, capacity_end_date)
+                    VALUES 
+                        ({source_id}, {'"' + str(source_name) + '"'}, {source_capacity_kwh}, NOW(), NULL)
+                """
+                )
+                self.insert_query(query)
+
+                self.logger.info("DWH_Utils -> dwh_solar_panel_insert_new_records -> Record is there, Updated from source, Update prev date")
+                query = (
+                f"""
+                    UPDATE 
+                        dimSolarPanel
+                    SET
+                        capacity_end_date = NOW()
+                    WHERE
+                        solar_panel_key = {solar_panel_key}
+                """
+                )
+                self.insert_query(query)
+
+            else:
+                self.logger.info("DWH_Utils -> dwh_solar_panel_insert_new_records -> Record is there, not updated")
+
+        self.logger.info("DWH_Utils -> handle_solar_panel_scd2 -> End")
+
+
+
     def dwh_solar_panel_insert_new_records(self, source_records):
         self.logger.info("DWH_Utils -> dwh_solar_panel_insert_new_records -> start")
 
@@ -105,51 +158,7 @@ class DWH_Utils():
             # and update the capacity_end_date for the previous record
             else:
                 self.logger.info("DWH_Utils -> dwh_solar_panel_insert_new_records -> Record is there, check update")
-
-                query = (
-                f"""
-                    SELECT  
-                        solar_panel_key,
-                        capacity_kwh
-                    FROM 
-                        dimSolarPanel
-                    WHERE 
-                        solar_panel_id = {source_id}
-                    ORDER BY solar_panel_key DESC LIMIT 1
-                """
-            )
-            querey_result = self.select_query_fetchonce(query)
-
-
-            if querey_result:
-                solar_panel_key, destination_capacity_kwh = querey_result
-                if source_capacity_kwh != destination_capacity_kwh:
-                    self.logger.info("DWH_Utils -> dwh_solar_panel_insert_new_records -> Record is there, Updated from source, Insert new record")
-
-                    query = (
-                    f"""
-                        INSERT INTO  
-                            dimSolarPanel(solar_panel_id, name, capacity_kwh, capacity_start_date, capacity_end_date)
-                        VALUES 
-                            ({source_id}, {'"' + str(source_name) + '"'}, {source_capacity_kwh}, NOW(), NULL)
-                    """
-                    )
-                    self.insert_query(query)
-
-                    self.logger.info("DWH_Utils -> dwh_solar_panel_insert_new_records -> Record is there, Updated from source, Update prev date")
-                    query = (
-                    f"""
-                        UPDATE 
-                            dimSolarPanel
-                        SET
-                            capacity_end_date = NOW()
-                        WHERE
-                            solar_panel_key = {solar_panel_key}
-                    """
-                    )
-                    self.insert_query(query)
-
-                else:
-                    self.logger.info("DWH_Utils -> dwh_solar_panel_insert_new_records -> Record is there, not updated")
+                self.handle_solar_panel_scd2(source_id, source_capacity_kwh, source_name)
+                
 
         self.connection.commit()
