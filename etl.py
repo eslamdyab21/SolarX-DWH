@@ -10,8 +10,10 @@ def main():
     db = DB_Utils()
     dwh = DWH_Utils()
     
-
+    querey_res = db.db_retrive_dim_solar_panels()
+    dwh.dwh_solar_panel_insert_new_records(querey_res)
     
+
 
     
     # close connection
