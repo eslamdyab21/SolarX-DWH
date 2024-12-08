@@ -23,7 +23,7 @@ class DWH_Utils():
             password=os.getenv('DWH_PASSWORD'),
             database=os.getenv('DWH_NAME'),
         )
-        self.cursor = self.connection.cursor()
+        self.cursor = self.connection.cursor(buffered=True)
 
 
         self.logger.info("DWH_Utils -> dwh_connect -> done")
@@ -39,15 +39,24 @@ class DWH_Utils():
         self.logger.info("DWH_Utils -> dwh_close_connection -> done")
 
     
-    def select_query(self, query):
-        self.logger.info("DWH_Utils -> select_query -> start")
+    def select_query_fetchonce(self, query):
+        self.logger.info("DWH_Utils -> select_query_fetchonce -> start")
 
         self.cursor.execute(query)
         result = self.cursor.fetchone()
 
-        self.logger.info("DWH_Utils -> select_query -> done")
+        self.logger.info("DWH_Utils -> select_query_fetchonce -> done")
         return result
     
+
+    def select_query_fetchall(self, query):
+        self.logger.info("DWH_Utils -> select_query_fetchall -> start")
+
+        self.cursor.execute(query)
+        result = self.cursor.fetchall()
+
+        self.logger.info("DWH_Utils -> select_query_fetchall -> done")
+        return result
 
 
     def insert_query(self, query):
@@ -61,8 +70,10 @@ class DWH_Utils():
 
 
     def dwh_solar_panel_insert_new_records(self, source_records):
+        self.logger.info("DWH_Utils -> dwh_solar_panel_insert_new_records -> start")
+
         for record in source_records:
-            id, name, capacity_kwh = record
+            source_id, source_name, source_capacity_kwh = record
 
             query = (
                 f"""
@@ -71,20 +82,74 @@ class DWH_Utils():
                     FROM 
                         dimSolarPanel
                     WHERE 
-                        solar_panel_id = {id}
+                        solar_panel_id = {source_id}
                 """
             )
             
-            querey_result = self.select_query(query)
+            querey_result = self.select_query_fetchonce(query)
+
+            # New record, insert it
             if not querey_result:
+                self.logger.info("DWH_Utils -> dwh_solar_panel_insert_new_records -> New record, insert it")
                 query = (
                     f"""
                         INSERT INTO  
                             dimSolarPanel(solar_panel_id, name, capacity_kwh, capacity_start_date, capacity_end_date)
                         VALUES 
-                            ({id}, {'"' + str(name) + '"'}, {capacity_kwh}, NOW(), NULL)
+                            ({source_id}, {'"' + str(source_name) + '"'}, {source_capacity_kwh}, NOW(), NULL)
                     """
                 )
                 self.insert_query(query)
+
+            # The record is there, check if it has been updated to insert a new record for it
+            # and update the capacity_end_date for the previous record
+            else:
+                self.logger.info("DWH_Utils -> dwh_solar_panel_insert_new_records -> Record is there, check update")
+
+                query = (
+                f"""
+                    SELECT  
+                        solar_panel_key,
+                        capacity_kwh
+                    FROM 
+                        dimSolarPanel
+                    WHERE 
+                        solar_panel_id = {source_id}
+                    ORDER BY solar_panel_key DESC LIMIT 1
+                """
+            )
+            querey_result = self.select_query_fetchonce(query)
+
+
+            if querey_result:
+                solar_panel_key, destination_capacity_kwh = querey_result
+                if source_capacity_kwh != destination_capacity_kwh:
+                    self.logger.info("DWH_Utils -> dwh_solar_panel_insert_new_records -> Record is there, Updated from source, Insert new record")
+
+                    query = (
+                    f"""
+                        INSERT INTO  
+                            dimSolarPanel(solar_panel_id, name, capacity_kwh, capacity_start_date, capacity_end_date)
+                        VALUES 
+                            ({source_id}, {'"' + str(source_name) + '"'}, {source_capacity_kwh}, NOW(), NULL)
+                    """
+                    )
+                    self.insert_query(query)
+
+                    self.logger.info("DWH_Utils -> dwh_solar_panel_insert_new_records -> Record is there, Updated from source, Update prev date")
+                    query = (
+                    f"""
+                        UPDATE 
+                            dimSolarPanel
+                        SET
+                            capacity_end_date = NOW()
+                        WHERE
+                            solar_panel_key = {solar_panel_key}
+                    """
+                    )
+                    self.insert_query(query)
+
+                else:
+                    self.logger.info("DWH_Utils -> dwh_solar_panel_insert_new_records -> Record is there, not updated")
 
         self.connection.commit()
