@@ -2,7 +2,7 @@ import logging
 import logging.config
 
 
-def setup_logging(default_level=logging.INFO, log_file="dwh.log"):
+def setup_logging(default_level=logging.INFO, log_file="/dwh/dwh.log"):
     """Set up logging configuration."""
     log_config = {
         "version": 1,

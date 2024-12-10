@@ -13,3 +13,4 @@ RUN pip install --no-cache-dir -r requirements.txt --break-system-packages
 COPY . .
 
 RUN crontab -l | { echo "0 0 * * * python3 /dwh/etl.py"; } | crontab -
+RUN service cron start
